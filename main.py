@@ -20,45 +20,45 @@ def cleanup_temp_files():
         except Exception as e:
             print(f"Error deleting file {file_path}: {e}")
 
-@app.route('/detect_and_recognize_faces', methods=['POST'])
-def detect_and_recognize_faces():
+@app.route('/detect_faces', methods=['POST'])
+def detect_faces():
     cleanup_temp_files()
 
     data = request.json
-    group_photos_dir = data.get('group_photos_dir')
+    unknown_faces_dir = data.get('unknown_faces_dir')
     known_faces_dir = data.get('known_faces_dir')
 
-    if not group_photos_dir or not os.path.exists(group_photos_dir):
-        return jsonify(error=f"Group photos directory '{group_photos_dir}' does not exist"), 400
+    if not unknown_faces_dir or not os.path.exists(unknown_faces_dir):
+        return jsonify(error=f"UnKnown faces directory '{unknown_faces_dir}' does not exist"), 400
     if not known_faces_dir or not os.path.exists(known_faces_dir):
         return jsonify(error=f"Known faces directory '{known_faces_dir}' does not exist"), 400
 
     processed_photo_urls = []
-    for group_photo_filename in os.listdir(group_photos_dir):
-        group_photo_path = os.path.join(group_photos_dir, group_photo_filename)
-        if not any(group_photo_path.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
+    for unknown_face_filename in os.listdir(unknown_faces_dir):
+        unknown_face_path = os.path.join(unknown_faces_dir, unknown_face_filename)
+        if not any(unknown_face_path.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS):
             continue
 
         try:
-            processed_photo, output_path = process_group_photo(group_photo_path, known_faces_dir)
-            processed_photo_url = url_for('serve_processed_image', filename=output_path, _external=True)
+            processed_photo, output_path = process_unknown_face(unknown_face_path, known_faces_dir)
+            processed_photo_url = url_for('serve_image', filename=output_path, _external=True)
             processed_photo_urls.append(processed_photo_url)
         except Exception as e:
-            print(f"Error processing {group_photo_path}: {e}")
+            print(f"Error processing {unknown_face_path}: {e}")
 
     return jsonify(processed_photo_urls)
 
-def process_group_photo(group_photo_path, known_faces_dir):
-    group_photo = cv2.imread(group_photo_path)
-    if group_photo is None:
-        raise ValueError(f"Failed to read image: {group_photo_path}")
+def process_unknown_face(unknown_face_path, known_faces_dir):
+    unknown_face = cv2.imread(unknown_face_path)
+    if unknown_face is None:
+        raise ValueError(f"Failed to read image: {unknown_face_path}")
 
-    detected_faces = DeepFace.extract_faces(img_path=group_photo_path, enforce_detection=False)
+    detected_faces = DeepFace.extract_faces(img_path=unknown_face_path, enforce_detection=False)
 
     if not detected_faces:
         raise ValueError("No faces detected.")
 
-    processed_photo = group_photo.copy()
+    processed_photo = unknown_face.copy()
     known_faces = load_known_faces(known_faces_dir)
 
     rectangles = []
@@ -75,7 +75,7 @@ def process_group_photo(group_photo_path, known_faces_dir):
 
     labeled_faces = set()
     for (xA, yA, xB, yB) in pick:
-        face_img = group_photo[yA:yB, xA:xB]
+        face_img = unknown_face[yA:yB, xA:xB]
         best_match = recognize_face(face_img, known_faces)
 
         if best_match and best_match not in labeled_faces:
@@ -116,8 +116,8 @@ def recognize_face(face_img, known_faces):
 
     return best_match if best_match != "Unknown" else None
 
-@app.route('/serve_processed_image/<filename>')
-def serve_processed_image(filename):
+@app.route('/serve_image/<filename>')
+def serve_image(filename):
     return send_file(os.path.join(tempfile.gettempdir(), filename), mimetype='image/jpeg')
 
 if __name__ == '__main__':

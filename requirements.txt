@@ -2,3 +2,4 @@ deepface
 tf-keras
 opencv-python
 flask
+imutils

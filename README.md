@@ -8,7 +8,7 @@ visage_detect is a face recognition project implemented for identifying characte
 
    ```sh
    git clone https://github.com/KaungKhantKyaw1997/visage_detect.git
-   cd photo_processor
+   cd visage_detect
    ```
 
 2. **Create a virtual environment**:
